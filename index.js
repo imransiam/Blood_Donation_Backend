@@ -27,13 +27,28 @@ async function run() {
 
     const database = client.db("bloodDonationDB");
     const usersCollection = database.collection("users");
-    app.post('/users',async(req,res)=>{
-      const userInfo = req.body;
-      userInfo.role = 'user';
-      userInfo.createdAt = new Date();
-      const result = await usersCollection.insertOne(userInfo);
-      res.send(result)
-    })
+    const productsCollection = database.collection("products");
+
+
+    app.post('/users', async (req, res) => {
+  const userInfo = req.body;
+  const query = { email: userInfo.email }; // Check if email already exists
+  
+  const updateDoc = {
+    $set: {
+      name: userInfo.name,
+      image: userInfo.image,
+      role: userInfo.role,
+      // We only set createdAt if it's a brand new user
+    },
+    $setOnInsert: { createdAt: new Date() } 
+  };
+
+  const options = { upsert: true }; // This is the "Magic" line
+
+  const result = await usersCollection.updateOne(query, updateDoc, options);
+  res.send(result);
+});
 
     app.get('/users/role/:email',async(req,res)=>{
       const {email} = req.params;
@@ -42,6 +57,14 @@ async function run() {
       const result = await usersCollection.findOne(query);
       console.log(result);
       res.send(result)
+    })
+
+    app.post('/products',async(req,res)=>{
+      const data = req.body;
+      data.createdAt = new Date();
+      const result = await productsCollection.insertOne(data);
+      res.send(result)
+
     })
 
     await client.db("admin").command({ ping: 1 });
